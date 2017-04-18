@@ -21,18 +21,15 @@
 
 #define UART_BUFFER_SIZE 32
 
-/*! @struct UartHandler
- * 	@brief Structure is handling UART module via serial port.
- *
- */
+
 typedef struct UartHandler
 {
-	struct termios Settings; 	/*! Serial port settings */
-	int PortNum; 				/*! UART module number 1,2... */
-	int BaudRateKilos;			/*! Baud rate value for UART */
-	int DataBits;				/*! Data bits */
-	int Fd;						/*! File descriptor */
-	uint8_t Buffer[UART_BUFFER_SIZE];	/*! Buffer for receiving data from serial port */
+	struct termios Settings;
+	uint8_t PortNum;
+	uint8_t BaudRateKilos;
+	uint8_t DataBits;
+	int Fd;
+	uint8_t Buffer[UART_BUFFER_SIZE];
 	int ReceivedBytes;
 	int SendedBytes;
 	int (*send)(struct UartHandler*,uint8_t*,int);
@@ -40,14 +37,10 @@ typedef struct UartHandler
 
 }UartHandler;
 
-/*! @brief Function is setting up UART module with certain values
- * 	@param handler UartHandler pointer to previously created object
- * 	@param num UART number
- * 	@param bd Baud rate in kilos for 960
- * 	@param db Data bits
- */
-int setupUart (UartHandler* handler,int num,int bd,int db);
+
+int setupUart (UartHandler* handler,int num,int bd,int db,int canon);
 void printfUartSettings (UartHandler* handler);
+void printfUartBuffer(UartHandler* handler);
 int sendData(UartHandler* handler, uint8_t *message,int k);
 int receiveData (UartHandler* handler);
 

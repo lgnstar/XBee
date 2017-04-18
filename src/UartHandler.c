@@ -8,7 +8,7 @@
 *	@param bd Baud Rate
 *	@param db Data Bits
 */
-int setupUart(UartHandler* handler,int num,int bd,int db)
+int setupUart(UartHandler* handler,int num,int bd,int db,int canon)
 {
 
 	char SerialPath[32]="/dev/ttyO";
@@ -18,6 +18,7 @@ int setupUart(UartHandler* handler,int num,int bd,int db)
 	strcat(SerialPath,SerialNum);
 	printf("UART: Opening %s \n", SerialPath);
 
+	/* Opening the port with O_RDWR and O_NOCTTY*/
 	handler->Fd = open(SerialPath, O_RDWR | O_NOCTTY);
 	if (handler->Fd == -1)
 	{
@@ -30,13 +31,13 @@ int setupUart(UartHandler* handler,int num,int bd,int db)
 		printf("UART:Choosen port is not serial port! \n");
 		return -1;
 	}
-	
+	/* Getting the current settings of the serial port */
 	if (tcgetattr(handler->Fd, &handler->Settings) < 0)
 	{
 		printf("UART:Getting serial port attributes: %s\n", strerror(errno));
 		return -1;
 	}
-
+	/* Setting input and output baud rate to chosen */
 	cfsetospeed(&handler->Settings, (speed_t)bd);
 	cfsetispeed(&handler->Settings, (speed_t)bd);
 
@@ -50,11 +51,21 @@ int setupUart(UartHandler* handler,int num,int bd,int db)
 		default: printf("UART:Wrong baud rate, setup failed! \n"); return -1;
 	}
 
-
+	/*	Settings:
+	 * PARENB	Enable parity bit
+	 * CSTOPB	2 stop bits (1 otherwise)
+	 * CSIZE	Bit mask for data bits
+	 */
 	handler->Settings.c_cflag &= ~PARENB;
 	handler->Settings.c_cflag &= ~CSTOPB;
 	handler->Settings.c_cflag &= ~CSIZE;
 
+	/* 	Settings:
+	 * CS5	5 data bits
+	 * CS6	6 data bits
+	 * CS7	7 data bits
+	 * CS8	8 data bits
+	 */
 	switch (db)
 		{
 		case 5: handler->Settings.c_cflag |= CS5;printf("UART:Setting data bits to 5 \n"); break;
@@ -63,12 +74,33 @@ int setupUart(UartHandler* handler,int num,int bd,int db)
 		case 8: handler->Settings.c_cflag |= CS8;printf("UART:Setting data bits to 8 \n"); break;
 			default: handler->Settings.c_cflag |= CS8;printf("UART:Setting data bits to default value (8) \n"); break;
 		}
-
+	/*	Settings:
+	 * CRTSCTS	Enable hardware flow control (not supported on all platforms)
+	 * CLOCAL	Local line - do not change "owner" of port
+	 * CREAD	Enable receiver
+	 * IXON		Enable software flow control (outgoing)
+	 * IXOFF	Enable software flow control (incoming)
+	 * IXANY	Allow any character to start flow again
+	 * ICANON	Enable canonical input (else raw)
+	 * ECHO		Enable echoing of input characters
+	 * ECHOE	Echo erase character as BS-SP-BS
+	 * ISIG		Enable SIGINTR, SIGSUSP, SIGDSUSP, and SIGQUIT signals
+	 */
 	handler->Settings.c_cflag &= ~CRTSCTS;
 	handler->Settings.c_cflag |= (CLOCAL | CREAD );
 	handler->Settings.c_iflag &= ~(IXON | IXOFF | IXANY);
+
+	if (canon == 1)
+	/* Choosing canonical input */
+	handler->Settings.c_lflag |= (ICANON | ECHO | ECHOE);
+	else
+	/* Choosing raw input */
 	handler->Settings.c_iflag &= ~(ICANON | ECHO | ECHOE | ISIG);
 
+	/* 	Settings:
+	 * VMIN	Minimum number of characters to read
+	 * VTIME	Time to wait for data (tenths of seconds)
+	 */
 	handler->Settings.c_cc[VMIN] = 4;
 	handler->Settings.c_cc[VTIME] = 0;
 
@@ -112,6 +144,12 @@ void printfUartSettings(UartHandler *handler)
 	printf("UART: Using UART%d \n", handler->PortNum);
 	printf("UART: Baud rate %d k \n", handler->BaudRateKilos);
 	printf("UART: Data bits %d \n", handler->DataBits);
+}
+void printfUartBuffer(UartHandler* handler)
+{
+	for(int i=0;i<UART_BUFFER_SIZE;++i)
+		printf("%c", handler->Buffer[i]);
+	printf("\n");
 }
 UartHandler* newUartHandler()
 {
